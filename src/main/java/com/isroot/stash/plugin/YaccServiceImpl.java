@@ -97,7 +97,7 @@ public class YaccServiceImpl implements YaccService
 		{
 			Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE);
 			Matcher matcher = pattern.matcher(changeset.getMessage());
-			if(matcher.matches() == false)
+			if(matcher.find() == false)
 			{
 				errors.add("commit message doesn't match regex: " + regex);
 			}
@@ -115,12 +115,15 @@ public class YaccServiceImpl implements YaccService
 		String regex = settings.getString("commitMessageRegex");
 		if(isNullOrEmpty(regex) == false)
 		{
-			Pattern pattern = Pattern.compile(regex);
+			Pattern pattern = Pattern.compile(regex, Pattern.MULTILINE);
 			Matcher matcher = pattern.matcher(message);
-			if(matcher.matches() && matcher.groupCount() > 0)
-			{
-				message = matcher.group(1);
+			String newMessage = "";
+			while(matcher.find()) {
+				if (matcher.groupCount() > 0) {
+					newMessage = newMessage + " " + matcher.group(1);
+				}
 			}
+			message = newMessage;
 		}
 
         final List<IssueKey> issueKeys = IssueKey.parseIssueKeys(message);

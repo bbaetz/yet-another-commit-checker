@@ -226,6 +226,38 @@ public class YaccServiceImplTest
     }
 
     @Test
+    public void testCheckRefChange_jiraIssueIdIsExtractedFromCommitMessageUsingRegex() throws Exception
+    {
+        when(settings.getString("commitMessageRegex")).thenReturn("([A-Z][A-Z_0-9]+-[0-9]+)");
+        when(settings.getBoolean("requireJiraIssue", false)).thenReturn(true);
+        when(jiraService.doesJiraApplicationLinkExist()).thenReturn(true);
+
+        YaccChangeset changeset = mockChangeset();
+        when(changeset.getMessage()).thenReturn("ABC-123: extract");
+        when(changesetsService.getNewChangesets(any(Repository.class), any(RefChange.class))).thenReturn(Sets.newHashSet(changeset));
+
+        yaccService.checkRefChange(null, settings, mockRefChange());
+        verify(jiraService).doesIssueExist(new IssueKey("ABC-123"));
+    }
+
+    @Test
+    public void testCheckRefChange_jiraIssueIdsAreExtractedFromCommitMessageUsingRegex() throws Exception
+    {
+        when(settings.getString("commitMessageRegex")).thenReturn("([A-Za-z0-9_]+-[0-9]+)");
+        when(settings.getBoolean("requireJiraIssue", false)).thenReturn(true);
+        when(jiraService.doesJiraApplicationLinkExist()).thenReturn(true);
+
+        YaccChangeset changeset = mockChangeset();
+        when(changeset.getMessage()).thenReturn("these issue ids should be extracted: ABC-123, ABC_D-123\nABC2-123");
+        when(changesetsService.getNewChangesets(any(Repository.class), any(RefChange.class))).thenReturn(Sets.newHashSet(changeset));
+
+        yaccService.checkRefChange(null, settings, mockRefChange());
+        verify(jiraService).doesIssueExist(new IssueKey("ABC-123"));
+        verify(jiraService).doesIssueExist(new IssueKey("ABC_D-123"));
+        verify(jiraService).doesIssueExist(new IssueKey("ABC2-123"));
+    }
+
+    @Test
     public void testCheckRefChange_requireJiraIssue_errorReturnedIfJiraAuthenticationFails() throws Exception
     {
         when(settings.getBoolean("requireJiraIssue", false)).thenReturn(true);
@@ -245,7 +277,7 @@ public class YaccServiceImplTest
     @Test
     public void testCheckRefChange_commitMessageRegex_commitMessageMatchesRegex() throws Exception
     {
-        when(settings.getString("commitMessageRegex")).thenReturn("[a-z ]+");
+        when(settings.getString("commitMessageRegex")).thenReturn("^[a-z ]+$");
         when(jiraService.doesJiraApplicationLinkExist()).thenReturn(true);
 
         YaccChangeset changeset = mockChangeset();
@@ -259,7 +291,7 @@ public class YaccServiceImplTest
     @Test
     public void testCheckRefChange_commitMessageRegex_rejectIfCommitMessageDoesNotMatchRegex() throws Exception
     {
-        when(settings.getString("commitMessageRegex")).thenReturn("[a-z ]+");
+        when(settings.getString("commitMessageRegex")).thenReturn("^[a-z ]+$");
         when(jiraService.doesJiraApplicationLinkExist()).thenReturn(true);
 
         YaccChangeset changeset = mockChangeset();
@@ -267,7 +299,7 @@ public class YaccServiceImplTest
         when(changesetsService.getNewChangesets(any(Repository.class), any(RefChange.class))).thenReturn(Sets.newHashSet(changeset));
 
         List<String> errors = yaccService.checkRefChange(null, settings, mockRefChange());
-        assertThat(errors).contains("refs/heads/master: deadbeef: commit message doesn't match regex: [a-z ]+");
+        assertThat(errors).contains("refs/heads/master: deadbeef: commit message doesn't match regex: ^[a-z ]+$");
     }
 
     private YaccChangeset mockChangeset()
